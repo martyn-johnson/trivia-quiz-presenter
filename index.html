@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <title>Trivia Quiz</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: black;
+            color: white;
+            text-align: center;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .slide {
+            display: none;
+            width: 100%;
+        }
+        .active {
+            display: block;
+        }
+        .title {
+            font-size: 3em;
+        }
+        .mainevent {
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+            animation: pulse 2s infinite;
+            font-size: 8em;
+            margin: .2em;
+        }
+
+        @keyframes pulse {
+        0% {
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+        50% {
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+        }
+        100% {
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+        }
+        .subtitle {
+            font-size: 3em;
+        }
+        .question {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+        .answer {
+            display: none;
+            font-size: 3.5em;
+            margin-top: 20px;
+            margin-bottom: 15px;
+        }
+        .question-indicator {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 1.2em;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        .setupLink a {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: .8em;
+            color: white;
+        }
+        .timer-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.2em;
+            color: red;
+        }
+        .timer-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 15px;
+            background: red;
+            transform-origin: left;
+            transform: scaleX(1);
+            transition: transform linear;
+        }
+        .media-container iframe {
+            width: 65px; /* 560px */
+            height: 50px; /* 315px */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starsCanvas"></canvas>
+    <div id="setup" style="display: none;">
+        <h1>Trivia Setup</h1>
+        <label for="questionsInput">Questions (one question per line) (format: question|answer|timerSeconds|media|mediaType|startSeconds|durationSeconds)</label>
+        <br>
+        <textarea id="questionsInput" rows="25" cols="150" placeholder="What is the capital of France?|Paris">
+What is the capital of France?|Paris
+What is the time limit on this question?|It is 30 seconds|30
+What was the first word spoken on the telephone?|Ahoy Ahoy!|0
+Name the City?|Charles Bridge - Prague, Czech Republic||https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/0e/67/3a/charles-bridge-karluv.jpg?w=1800&h=1000&s=1|image
+Name the Landmark?|Arc de Triomphe, Paris||https://www.celebritycruises.com/blog/content/uploads/2022/01/famous-landmarks-in-paris-arc-de-triomphe-hero-1600x890.jpg|imageReveal
+Name the Landmark?|Leaning Tower of Pisa||https://www.aworldinreach.com/wp-content/uploads/2021/09/leaning-tower-of-pisa-1-1.jpeg|imageScramble
+Name the Landmark?|The Louvre, Paris||https://www.celebritycruises.com/blog/content/uploads/2022/01/famous-landmarks-in-paris-the-louvre.jpg|imageScramble
+Name the artist?|Aerosmith x RunDMC||https://www.youtube.com/watch?v=4B_UYYPb-Gk|youtube|72|10
+        </textarea>
+        <br>
+        <label for="defaultTimer">Question Timer (seconds) - (0 for no timer):</label>
+        <input type="number" id="defaultTimer" value="60">
+        <br>
+        <label for="titleInput">Title:</label>
+        <input type="text" id="titleInput" value="WELCOME TO">
+        <br>
+        <label for="mainEventInput">Main Event:</label>
+        <input type="text" id="mainEventInput" value="TRIVIA NIGHT!">
+        <br>
+        <label for="subtitleInput">Subtitle:</label>
+        <input type="text" id="subtitleInput" value="HAPPY QUIZZING">
+        <br>
+        <button onclick="startQuiz()">Start Quiz</button>
+    </div>
+    <div class="question-indicator" id="questionIndicator">Q1 of 3</div>
+    <div id="slides">
+	    <div class="slide" id="welcome">
+            <h1 class="title"></h1>
+            <h2 class="mainevent"></h2>
+            <h3 class="subtitle"></h3>
+            <div class="setupLink"><a href="#" onclick="showSetup();return false;">setup</a></div>
+        </div>
+    </div>
+    <div class="timer-container" id="timerContainer" style="display: none;">
+        <span id="timerText">0</span>s
+    </div>
+    
+    <script>
+        const slidesContainer = document.getElementById('slides');
+        const questionIndicator = document.getElementById('questionIndicator');
+        const timerContainer = document.getElementById('timerContainer');
+        const timerText = document.getElementById('timerText');
+
+        let youtubePlayers = {};
+        let currentSlideIndex = 0;
+        let slides = [];
+        let answerShown = false;
+        let timerInterval;
+        let timerSecondsDefault = 0;
+        let title;
+        let mainEvent;
+        let subtitle;
+        let quizData
+        let revealTimers = [];
+
+        function showSetup() {
+            document.getElementById('setup').style.display = 'block';
+            slidesContainer.style.display = 'none';
+        }
+
+        function startQuiz() {
+            //User options
+            timerSecondsDefault = document.getElementById('defaultTimer').value;
+            //Get the title from the setup
+            title = document.getElementById('titleInput').value;
+            mainEvent = document.getElementById('mainEventInput').value;
+            subtitle = document.getElementById('subtitleInput').value;
+
+            //Get the quiz data from the setup
+            let questionsInput = document.getElementById('questionsInput').value;
+            quizData = questionsInput.split('\n').filter(line => line.trim() !== '').map(question => {
+            const [questionText, answer, timerSeconds, media, mediaType, startSeconds, durationSeconds] = question.split('|');
+            return { 
+                question: questionText, 
+                answer, 
+                timerSeconds: timerSeconds ? parseInt(timerSeconds) : undefined, 
+                media, 
+                mediaType, 
+                startSeconds: startSeconds ? parseInt(startSeconds) : undefined, 
+                durationSeconds: durationSeconds ? parseInt(durationSeconds) : undefined 
+            };
+            });
+
+            //Set the title, main event and subtitle
+            document.querySelector('.title').textContent = title;
+            document.querySelector('.mainevent').textContent = mainEvent;
+            document.querySelector('.subtitle').textContent = subtitle;
+
+            //Hide the setup and show the slides
+            document.getElementById('setup').style.display = 'none';
+            slidesContainer.style.display = 'block';
+
+            //Delete all slides except the welcome slide
+            slidesContainer.innerHTML = document.getElementById('welcome').outerHTML;
+
+            youtubePlayers = {};
+            currentSlideIndex = 0;
+            slides = [];
+            answerShown = false;
+            stopTimer();
+
+            createSlides();
+            updateIndicator();
+            showSlide(0);
+        }
+
+        function createSlides() {
+            quizData.forEach((item, index) => {
+                const slide = document.createElement('div');
+                slide.classList.add('slide');
+                slide.id = `slide_${index + 1}`;
+                slide.innerHTML = `<h2 class="question">Q: ${item.question}</h2><p class='answer'>A: ${item.answer}</p>`;
+                if (item.mediaType === 'image') {
+                    slide.innerHTML += `<div class='media-container'><img style="max-height: 70vh;" src='${item.media}' alt='Question Image'></div>`;
+                }
+
+                if (item.mediaType === 'imageReveal') {
+                    slide.innerHTML += `
+                        <div class='media-container' style="position: relative; display: inline-block;">
+                            <img id="image_${index}" class="revealImage" style="max-height: 70vh; display: block; opacity: 0;" src='${item.media}' alt='Question Image'>
+                            <div id="overlay_${index}" class="overlay"></div>
+                        </div>`;
+                }
+
+                if (item.mediaType === 'imageScramble') {
+                    slide.innerHTML += `
+                        <div class='media-container'>
+                            <div id="scrambleContainer_${index}" class="scramble-container"></div>
+                            <div id="answerContainer_${index}" class="answer-container" style="display:none;"><img style="max-height: 70vh;" src='${item.media}' alt='Question Image'></div>
+                        </div>`;
+                }
+
+                if (item.mediaType === 'youtube') {
+                    const videoId = extractYouTubeId(item.media);
+                    slide.innerHTML += `<div class='media-container'><div id="youtubePlayer_${index}"></div></div>`;
+                    youtubePlayers[`youtubePlayer_${index}`] = { videoId, startSeconds: item.startSeconds, durationSeconds: item.durationSeconds };
+                }
+                slidesContainer.appendChild(slide);
+            });
+            slides = document.querySelectorAll('.slide');
+        }
+
+        function revealImage(index) {
+            const img = document.getElementById(`image_${index}`);
+            const overlayContainer = document.getElementById(`overlay_${index}`);
+
+            if (!img || !overlayContainer) return;
+
+            // Reset overlay before each reveal
+            overlayContainer.innerHTML = ""; 
+
+            const gridSize = 6; // Adjust for more squares
+            const numSquares = gridSize * gridSize;
+            const squares = [];
+
+            const fadeDuration = 2.5; // 🔹 Adjust fade time (seconds)
+            const staggerDelay = 600; // 🔹 Adjust stagger delay (milliseconds)
+
+            overlayContainer.style.position = "absolute";
+            overlayContainer.style.top = "0";
+            overlayContainer.style.left = "0";
+            overlayContainer.style.width = img.clientWidth + "px";
+            overlayContainer.style.height = img.clientHeight + "px";
+            overlayContainer.style.display = "grid";
+            overlayContainer.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+            overlayContainer.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
+            overlayContainer.style.zIndex = "2"; // Ensure overlay is above image
+
+            img.style.opacity = "1"; // Now show the image only after overlay is in place
+
+            // Create squares
+            for (let i = 0; i < numSquares; i++) {
+                const square = document.createElement("div");
+                square.style.backgroundColor = "black";
+                square.style.width = "100%";
+                square.style.height = "100%";
+                square.style.opacity = "1";
+                square.style.transition = `opacity ${fadeDuration}s ease-in-out`; // Slower fade
+                overlayContainer.appendChild(square);
+                squares.push(square);
+            }
+
+            // Shuffle the squares to randomize reveal order
+            function shuffleArray(arr) {
+                return arr.sort(() => Math.random() - 0.5);
+            }
+
+            const shuffledSquares = shuffleArray(squares);
+
+            // Apply reveal effect with staggered timing
+            shuffledSquares.forEach((square, i) => {
+                let timer = setTimeout(() => {
+                    square.style.opacity = "0";
+                }, i * staggerDelay); // Slower stagger effect
+                revealTimers.push(timer);
+            });
+
+            // Timer to clear overlay after animation
+            let clearOverlayTimer = setTimeout(() => {
+                overlayContainer.innerHTML = ""; // Clear overlay so it can be reset next time
+            }, shuffledSquares.length * staggerDelay + (fadeDuration * 1000));
+
+            revealTimers.push(clearOverlayTimer);
+        }
+
+        function scrambleImage(index) {
+            const container = document.getElementById(`scrambleContainer_${index}`);
+            if (!container) return;
+
+            container.innerHTML = ""; // Clear previous scramble
+            container.style.position = "relative";
+            container.style.display = "grid";
+            container.style.height = "70vh";
+            //container.style.aspectRatio = "16/9"; // Maintain aspect ratio
+
+            const gridSize = 4; // 4x4 grid
+            container.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+            container.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
+
+            const img = new Image();
+            img.src = quizData[index].media;
+            img.onload = () => {
+                const pieces = [];
+
+                // Create grid structure with scrambled tiles
+                for (let row = 0; row < gridSize; row++) {
+                    for (let col = 0; col < gridSize; col++) {
+                        const piece = document.createElement("div");
+                        piece.classList.add("scramble-piece");
+                        piece.style.backgroundImage = `url(${img.src})`;
+                        piece.style.backgroundSize = `${gridSize * 100}% ${gridSize * 100}%`;
+                        piece.style.backgroundPosition = `-${col * 100 / (gridSize - 1)}% -${row * 100 / (gridSize - 1)}%`;
+                        piece.style.width = "100%";
+                        piece.style.height = "100%";
+                        piece.style.position = "relative";
+
+                        container.appendChild(piece);
+                        pieces.push(piece);
+                    }
+                }
+
+                // Shuffle pieces randomly by reordering them in the grid
+                function shuffleArray(arr) {
+                    return arr.sort(() => Math.random() - 0.5);
+                }
+
+                const shuffledPieces = shuffleArray([...pieces]);
+
+                // Apply scrambled positions
+                container.innerHTML = ""; // Clear and re-add in scrambled order
+                shuffledPieces.forEach(piece => {
+                    container.appendChild(piece);
+                });
+
+            };
+        }
+
+        // **Solve the scramble by replacing the scrambled grid with the original image**
+        function solveScramble(index) {
+            const scrambleContainer = document.getElementById(`scrambleContainer_${index}`);
+            const answerContainer = document.getElementById(`answerContainer_${index}`);
+            if (!scrambleContainer || !answerContainer) return;
+            // Hide the scrambled image
+            scrambleContainer.style.display = 'none';
+            // Show the unscrambled answer image
+            answerContainer.style.display = 'block';
+        }
+
+        function extractYouTubeId(url) {
+            const match = url.match(/(?:embed\/|watch\?v=|youtu.be\/|\/)([a-zA-Z0-9_-]{11})/);
+            return match ? match[1] : url;
+        }
+
+        function onYouTubeIframeAPIReady() {
+            for (const playerId in youtubePlayers) {
+            const data = youtubePlayers[playerId];
+            youtubePlayers[playerId].player = new YT.Player(playerId, {
+                height: '315',
+                width: '560',
+                videoId: data.videoId,
+                playerVars: { autoplay: 0, controls: 0, start: data.startSeconds },
+                events: { 'onStateChange': (event) => onPlayerStateChange(event, data) }
+            });
+            }
+        }
+
+        function onPlayerStateChange(event, data) {
+            if (event.data === YT.PlayerState.PLAYING && data.durationSeconds) {
+            data.timeoutId = setTimeout(() => {
+                event.target.pauseVideo();
+                event.target.seekTo(data.startSeconds, true); // Reset to startSeconds after stopping
+            }, data.durationSeconds * 1000);
+            } else {
+                clearTimeout(data.timeoutId);
+            }
+        }
+
+        function updateIndicator() {
+            if (currentSlideIndex > 0) {
+                questionIndicator.textContent = `Q${currentSlideIndex} of ${slides.length - 1}`;
+            } else {
+                questionIndicator.textContent = "";
+            }
+        }
+
+        function startTimer(duration) {
+            stopTimer(); // Ensure any previous timer is stopped
+
+            if (duration > 0) {
+                // Create a new timerBar element
+                const newTimerBar = document.createElement('div');
+                newTimerBar.classList.add('timer-bar');
+                newTimerBar.style.position = 'absolute';
+                newTimerBar.style.bottom = '0';
+                newTimerBar.style.left = '0';
+                newTimerBar.style.width = '100%';
+                newTimerBar.style.height = '15px';
+                newTimerBar.style.background = 'red';
+                newTimerBar.style.transformOrigin = 'left';
+                newTimerBar.style.transform = 'scaleX(1)';
+                newTimerBar.style.transition = `transform ${duration}s linear`;
+
+                // Append new timer bar
+                document.body.appendChild(newTimerBar);
+
+                // Also show timer text
+                timerContainer.style.display = 'block';
+                timerText.textContent = duration;
+
+                // Trigger the animation
+                setTimeout(() => {
+                    newTimerBar.style.transform = 'scaleX(0)';
+                }, 100);
+
+                let timeLeft = duration;
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    timerText.textContent = timeLeft;
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        stopTimer(); // Remove the timer bar once finished
+                    }
+                }, 1000);
+            } else {
+                stopTimer();
+            }
+        }
+
+
+        function stopTimer() {
+            clearTimeout(timerInterval);
+            
+            // Remove any existing timerBar
+            const existingTimerBar = document.querySelector('.timer-bar');
+            if (existingTimerBar) {
+                existingTimerBar.remove();
+            }
+
+            timerContainer.style.display = 'none';
+        }
+
+        // Function to clear reveal timers
+        function clearRevealTimers() {
+            revealTimers.forEach(timer => clearTimeout(timer));
+            revealTimers = [];
+            // Clear overlay if it's still there on all elements with the overlay class
+            const overlays = document.querySelectorAll('.overlay');
+            overlays.forEach(overlay => {
+                overlay.innerHTML = "";
+            });
+            
+            // Set opacity: 0; on any img with revealImage class
+            const images = document.querySelectorAll('.revealImage');
+            images.forEach(img => {
+                img.style.opacity = "0";
+            });
+        }
+
+        function showSlide(index) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[index].classList.add('active');
+            hideAnswer();
+            updateIndicator();
+            clearRevealTimers();
+
+            // Reset the scramble answer if this slide is an imageScramble
+            if (index > 0 && quizData[index - 1].mediaType === 'imageScramble') {
+                const scrambleContainer = document.getElementById(`scrambleContainer_${index - 1}`);
+                const answerContainer = document.getElementById(`answerContainer_${index - 1}`);
+                if (scrambleContainer && answerContainer) {
+                    scrambleContainer.style.display = 'block';
+                    answerContainer.style.display = 'none';
+                }
+            }
+
+            // Stop any active YouTube videos before switching slides
+            for (const playerId in youtubePlayers) {
+                if (youtubePlayers[playerId].player) {
+                    youtubePlayers[playerId].player.stopVideo();
+                }
+            }
+
+            // If the new slide contains a YouTube video, initialize it
+            const currentSlide = slides[index];
+            const youtubeContainer = currentSlide.querySelector('.media-container div');
+
+            if (youtubeContainer && youtubePlayers[youtubeContainer.id]) {
+                const playerData = youtubePlayers[youtubeContainer.id];
+
+                if (!playerData.player) {
+                    // Create YouTube player when the slide is displayed
+                    playerData.player = new YT.Player(youtubeContainer.id, {
+                        height: '315',
+                        width: '560',
+                        videoId: playerData.videoId,
+                        playerVars: { autoplay: 0, controls: 1 }, // Ensure autoplay is off initially
+                        events: { 
+                            'onReady': (event) => {
+                                event.target.loadVideoById({
+                                    'videoId': playerData.videoId,
+                                    'startSeconds': playerData.startSeconds});
+                            },
+                            'onStateChange': (event) => onPlayerStateChange(event, playerData)
+                        }
+                    });
+                } else {
+                    // If player already exists, load the video at the correct time
+                    playerData.player.loadVideoById({
+                        videoId: playerData.videoId,
+                        startSeconds: playerData.startSeconds
+                    });
+                }
+            }
+
+            // If the question has an imageReveal, trigger the effect
+            if (quizData[index - 1] && quizData[index - 1].mediaType === 'imageReveal') {
+                setTimeout(() => revealImage(index - 1), 500);
+            }
+
+            // If the question has an imageScramble, trigger the effect
+            if (quizData[index - 1] && quizData[index - 1].mediaType === 'imageScramble') {
+                setTimeout(() => scrambleImage(index - 1), 500);
+            }
+
+            // Start or stop timer accordingly
+            if (quizData[index - 1]) {
+                let timerSeconds = quizData[index - 1].timerSeconds ?? timerSecondsDefault;
+                startTimer(timerSeconds);
+            } else {
+                stopTimer();
+            }
+        }
+
+
+        function hideAnswer() {
+            // Logic to hide the answer
+            answerShown = false;
+            // Hide the answer for the current slide, answer is always the next sibling of the question
+            const activeSlide = slides[currentSlideIndex];
+            const answerElement = activeSlide.querySelector('.answer');
+
+            if (answerElement) {
+                answerElement.style.display = 'none';
+            }
+            
+        }
+
+        function completeRevealImmediately(index) {
+            const overlayContainer = document.getElementById(`overlay_${index}`);
+            if (!overlayContainer) return;
+
+            // Clear any running reveal timers
+            clearRevealTimers();
+
+            // Instantly remove all black overlay squares
+            overlayContainer.querySelectorAll("div").forEach(square => {
+                square.style.opacity = "0"; // Instantly make all squares transparent
+            });
+
+            // Set the image opacity to 1 for the id="image_${index}" class="revealImage"
+            const img = document.getElementById(`image_${index}`);
+            if (img) {
+                img.style.opacity = "1";
+            }
+
+            // Remove the overlay after a short delay
+            setTimeout(() => {
+                overlayContainer.innerHTML = ""; // Clear overlay
+            }, 500);
+        }
+
+        function nextSlide() {
+            const activeSlide = slides[currentSlideIndex];
+            const answer = activeSlide.querySelector('.answer');
+            if (answer && !answerShown) {
+                answer.style.display = 'block';
+                answerShown = true;
+                stopTimer();
+                // If this slide has an image reveal, complete it immediately
+                if (quizData[currentSlideIndex - 1] && quizData[currentSlideIndex - 1].mediaType === 'imageReveal') {
+                    completeRevealImmediately(currentSlideIndex - 1);
+                }
+                // Solve the image scramble immediately when the answer is shown
+                if (quizData[currentSlideIndex - 1] && quizData[currentSlideIndex - 1].mediaType === 'imageScramble') {
+                    solveScramble(currentSlideIndex - 1);
+                }
+            } else if (currentSlideIndex < slides.length - 1) {
+                currentSlideIndex++;
+                showSlide(currentSlideIndex);
+            } else {
+                startQuiz();
+            }
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (slidesContainer.style.display === 'block') {
+                if (event.key === 'ArrowRight' || event.key === ' ') {
+                    nextSlide();
+                } else if (event.key === 'ArrowLeft' && currentSlideIndex > 0) {
+                    const activeSlide = slides[currentSlideIndex];
+                    const answer = activeSlide.querySelector('.answer');
+
+                    if (answer && !answerShown) {
+                    currentSlideIndex--;
+                    }
+
+                    showSlide(currentSlideIndex);
+                }
+                
+                if (event.key === 'Escape') {
+                    startQuiz();
+                }
+            }
+        });
+
+        startQuiz();
+    </script>
+
+    <script>
+        const canvas = document.getElementById('starsCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        let stars = [];
+        const numStars = 100;
+
+        class Star {
+            constructor() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.radius = Math.random() * 2;
+            this.opacity = Math.random() * 0.5; // Reduced intensity
+            this.speed = Math.random() * 0.3;
+            this.flickerSpeed = Math.random() * 0.02 + 0.01; // Reduced flickering speed
+            }
+            draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+            ctx.fill();
+            }
+            update() {
+            this.y += this.speed;
+            if (this.y > canvas.height) {
+                this.y = 0;
+                this.x = Math.random() * canvas.width;
+            }
+            this.opacity += this.flickerSpeed * (Math.random() > 0.5 ? 1 : -1);
+            if (this.opacity > 1) this.opacity = 1;
+            if (this.opacity < 0.5) this.opacity = 0.5;
+            }
+        }
+
+        function initStars() {
+            for (let i = 0; i < numStars; i++) {
+            stars.push(new Star());
+            }
+        }
+
+        function animateStars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(star => {
+            star.update();
+            star.draw();
+            });
+            requestAnimationFrame(animateStars);
+        }
+
+        initStars();
+        animateStars();
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            stars = [];
+            initStars();
+        });
+    </script>
+</body>
+</html>
