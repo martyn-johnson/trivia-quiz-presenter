@@ -2,6 +2,10 @@
 
 A simple and interactive trivia quiz presentation tool designed for quiz hosts. This HTML-based solution enables you to run trivia quizzes with a slideshow format, allowing seamless transitions between questions and answers, with built-in timers and multimedia support.
 
+## Try it out
+
+You can try out the Trivia Quiz Presenter by visiting the following link: [Trivia Quiz Presenter Demo](https://martyn-johnson.github.io/trivia-quiz-presenter/)
+
 ## Features
 
 - 🎤 **Slideshow Format:** Presents each question clearly, allowing the host to focus on engaging the audience.
