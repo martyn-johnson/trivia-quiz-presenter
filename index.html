@@ -19,7 +19,7 @@
             align-items: center;
             height: 100vh;
             position: relative;
-            overflow: hidden;
+            overflow: auto;
         }
         canvas {
             position: absolute;
@@ -116,33 +116,85 @@
     <canvas id="starsCanvas"></canvas>
     <div id="setup" style="display: none;">
         <h1>Trivia Setup</h1>
-        <label for="questionsInput">Questions (one question per line) (format: question|answer|timerSeconds|media|mediaType|startSeconds|durationSeconds)</label>
-        <br>
-        <textarea id="questionsInput" rows="25" cols="150" placeholder="What is the capital of France?|Paris">
-What is the capital of France?|Paris
-What is the time limit on this question?|It is 30 seconds|30
-What was the first word spoken on the telephone?|Ahoy Ahoy!|0
-Name the City?|Charles Bridge - Prague, Czech Republic||https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/0e/67/3a/charles-bridge-karluv.jpg?w=1800&h=1000&s=1|image
-Name the Landmark?|Arc de Triomphe, Paris||https://www.celebritycruises.com/blog/content/uploads/2022/01/famous-landmarks-in-paris-arc-de-triomphe-hero-1600x890.jpg|imageReveal
-Name the Landmark?|Leaning Tower of Pisa||https://www.aworldinreach.com/wp-content/uploads/2021/09/leaning-tower-of-pisa-1-1.jpeg|imageScramble
-Name the Landmark?|The Louvre, Paris||https://www.celebritycruises.com/blog/content/uploads/2022/01/famous-landmarks-in-paris-the-louvre.jpg|imageScramble
-Name the artist?|Aerosmith x RunDMC||https://www.youtube.com/watch?v=4B_UYYPb-Gk|youtube|72|10
-        </textarea>
-        <br>
-        <label for="defaultTimer">Question Timer (seconds) - (0 for no timer):</label>
-        <input type="number" id="defaultTimer" value="60">
-        <br>
-        <label for="titleInput">Title:</label>
-        <input type="text" id="titleInput" value="WELCOME TO">
-        <br>
-        <label for="mainEventInput">Main Event:</label>
-        <input type="text" id="mainEventInput" value="TRIVIA NIGHT!">
-        <br>
-        <label for="subtitleInput">Subtitle:</label>
-        <input type="text" id="subtitleInput" value="HAPPY QUIZZING">
-        <br>
+        <div class="form-group">
+            <label for="questionsInput">Questions (one question per line)
+                <br>(format: question|answer|timerSeconds|media|mediaType|startSeconds|durationSeconds)</label>
+            <textarea id="questionsInput" rows="15" cols="80" placeholder="What is the capital of France?|Paris"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="defaultTimer">Question Timer (seconds) - (0 for no timer):</label>
+            <input type="number" id="defaultTimer" value="">
+        </div>
+        <div class="form-group">
+            <label for="titleInput">Title:</label>
+            <input type="text" id="titleInput" value="">
+        </div>
+        <div class="form-group">
+            <label for="mainEventInput">Main Event:</label>
+            <input type="text" id="mainEventInput" value="">
+        </div>
+        <div class="form-group">
+            <label for="subtitleInput">Subtitle:</label>
+            <input type="text" id="subtitleInput" value="">
+        </div>
         <button onclick="startQuiz()">Start Quiz</button>
+        <p>HINT: Use the left and right keyboard arrows to navigate slides 😊</p>
+        <p>Check out the project on <a href="https://github.com/martyn-johnson/trivia-quiz-presenter" target="_blank">GitHub</a></p>
     </div>
+    <style>
+        #setup {
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            width: 90vw;
+            margin: auto;
+        }
+        #setup h1 {
+            color: #fff;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+        .form-group textarea,
+        .form-group input {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            resize: vertical;
+            width: 100%;
+        }
+        button {
+            background-color: #28a745;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        p {
+            color: #fff;
+        }
+        a {
+            color: #17a2b8;
+        }
+        a:hover {
+            color: #138496;
+        }
+    </style>
     <div class="question-indicator" id="questionIndicator">Q1 of 3</div>
     <div id="slides">
 	    <div class="slide" id="welcome">
@@ -195,14 +247,19 @@ Name the artist?|Aerosmith x RunDMC||https://www.youtube.com/watch?v=4B_UYYPb-Gk
 
         function loadSetupFromLocalStorage() {
             const storedSetup = localStorage.getItem('triviaSetup');
-            if (storedSetup) {
-                const setupData = JSON.parse(storedSetup);
-                document.getElementById('questionsInput').value = setupData.questions || "";
-                document.getElementById('defaultTimer').value = setupData.timerSecondsDefault || 60;
-                document.getElementById('titleInput').value = setupData.title || "WELCOME TO";
-                document.getElementById('mainEventInput').value = setupData.mainEvent || "TRIVIA NIGHT!";
-                document.getElementById('subtitleInput').value = setupData.subtitle || "HAPPY QUIZZING";
-            }
+            const setupData = storedSetup ? JSON.parse(storedSetup) : {};
+            document.getElementById('questionsInput').value = setupData.questions || `What is the capital of France?|Paris
+What is the time limit on this question?|It is 30 seconds|30
+What was the first word spoken on the telephone?|Ahoy Ahoy!|0
+Name the City?|Charles Bridge - Prague, Czech Republic||https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/0e/67/3a/charles-bridge-karluv.jpg?w=1800&h=1000&s=1|image
+Name the Landmark?|Arc de Triomphe, Paris||https://www.celebritycruises.com/blog/content/uploads/2022/01/famous-landmarks-in-paris-arc-de-triomphe-hero-1600x890.jpg|imageReveal
+Name the Landmark?|Leaning Tower of Pisa||https://www.aworldinreach.com/wp-content/uploads/2021/09/leaning-tower-of-pisa-1-1.jpeg|imageScramble
+Name the Landmark?|The Louvre, Paris||https://www.celebritycruises.com/blog/content/uploads/2022/01/famous-landmarks-in-paris-the-louvre.jpg|imageScramble
+Name the artist?|Aerosmith x RunDMC||https://www.youtube.com/watch?v=4B_UYYPb-Gk|youtube|72|10`;
+            document.getElementById('defaultTimer').value = setupData.timerSecondsDefault || 60;
+            document.getElementById('titleInput').value = setupData.title || "WELCOME TO";
+            document.getElementById('mainEventInput').value = setupData.mainEvent || "TRIVIA NIGHT!";
+            document.getElementById('subtitleInput').value = setupData.subtitle || "HAPPY QUIZZING";
         }
 
         function showSetup() {
@@ -664,9 +721,6 @@ Name the artist?|Aerosmith x RunDMC||https://www.youtube.com/watch?v=4B_UYYPb-Gk
             }
         }
 
-        // Call this function when the page loads
-        window.addEventListener('load', loadSetupFromLocalStorage);
-
         document.addEventListener('keydown', (event) => {
             if (slidesContainer.style.display === 'block') {
                 if (event.key === 'ArrowRight' || event.key === ' ') {
@@ -722,7 +776,11 @@ Name the artist?|Aerosmith x RunDMC||https://www.youtube.com/watch?v=4B_UYYPb-Gk
             }
         }
         
-        startQuiz();
+        // Call this function when the page loads
+        window.addEventListener('load', () => {
+            loadSetupFromLocalStorage();
+            startQuiz();
+        });
     </script>
 
     <script>
