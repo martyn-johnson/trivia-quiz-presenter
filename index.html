@@ -116,30 +116,30 @@
     <canvas id="starsCanvas"></canvas>
     <div id="setup" style="display: none;">
         <h1>Trivia Setup</h1>
+        <p style="font-style: italic;font-size: small;">HINT: Use `→` (Right Arrow) or `Space` - Next question / Show answer, `←` (Left Arrow) - Previous question, `Esc` - Restart the quiz</p>
         <div class="form-group">
-            <label for="questionsInput">Questions (one question per line)
-                <br>(format: question|answer|timerSeconds|media|mediaType|startSeconds|durationSeconds)</label>
+            <label for="questionsInput">Questions (one question per line)</label>
+            <span class="labelHint">(format: question|answer|timerSeconds|media|mediaType|startSeconds|durationSeconds)</span>
             <textarea id="questionsInput" rows="15" cols="80" placeholder="What is the capital of France?|Paris"></textarea>
         </div>
-        <div class="form-group">
+        <div class="form-group inline">
             <label for="defaultTimer">Question Timer (seconds) - (0 for no timer):</label>
-            <input type="number" id="defaultTimer" value="">
+            <input type="number" id="defaultTimer" value="" min="0" max="300">
         </div>
-        <div class="form-group">
+        <div class="form-group inline">
             <label for="titleInput">Title:</label>
             <input type="text" id="titleInput" value="">
         </div>
-        <div class="form-group">
+        <div class="form-group inline">
             <label for="mainEventInput">Main Event:</label>
             <input type="text" id="mainEventInput" value="">
         </div>
-        <div class="form-group">
+        <div class="form-group inline">
             <label for="subtitleInput">Subtitle:</label>
             <input type="text" id="subtitleInput" value="">
         </div>
         <button onclick="startQuiz()">Start Quiz</button>
-        <p>HINT: Use the left and right keyboard arrows to navigate slides 😊</p>
-        <p>Check out the project on <a href="https://github.com/martyn-johnson/trivia-quiz-presenter" target="_blank">GitHub</a></p>
+        <p>Check out the project on <a href="https://github.com/martyn-johnson/trivia-quiz-presenter" target="_blank">GitHub</a>, Happy Quizzing 😊</p>
     </div>
     <style>
         #setup {
@@ -161,6 +161,14 @@
             display: block;
             color: #fff;
             margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group.inline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-left: 30%;
+            margin-right: 30%;
         }
         .form-group textarea,
         .form-group input {
