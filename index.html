@@ -111,6 +111,38 @@
             height: 50px; /* 315px */
         }
     </style>
+        <style>
+            /* Modal Styles */
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.7);
+            }
+            .modal-content {
+                background-color: #222;
+                padding: 20px;
+                border-radius: 10px;
+                width: 50%;
+                margin: auto;
+                color: white;
+                margin-top: 10%;
+            }
+            .close {
+                color: #aaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+            }
+            .close:hover {
+                color: white;
+                cursor: pointer;
+            }
+        </style>
 </head>
 <body>
     <canvas id="starsCanvas"></canvas>
@@ -121,6 +153,7 @@
             <label for="questionsInput">Questions (one question per line)</label>
             <span class="labelHint">(format: question|answer|timerSeconds|media|mediaType|startSeconds|durationSeconds)</span>
             <textarea id="questionsInput" rows="15" cols="80" placeholder="What is the capital of France?|Paris"></textarea>
+            <button onclick="openModal()">Question Generator</button>
         </div>
         <div class="form-group inline">
             <label for="defaultTimer">Question Timer (seconds) - (0 for no timer):</label>
@@ -140,6 +173,64 @@
         </div>
         <button onclick="startQuiz()">Start Quiz</button>
         <p>Check out the project on <a href="https://github.com/martyn-johnson/trivia-quiz-presenter" target="_blank">GitHub</a>, Happy Quizzing 😊</p>
+    </div>
+
+    <div id="triviaModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Generate Trivia Questions</h2>
+            <form onsubmit="fetchTriviaQuestions(event)">
+                <p>Generate trivia questions from the Open Trivia Database API. <a href="https://opentdb.com/" target="_blank">opentdb</a></p>
+                <label for="trivia_amount">Number of Questions:</label>
+                <input type="number" id="trivia_amount" min="1" max="50" value="10"><br>
+
+                <label for="trivia_category">Select Category:</label>
+                <select id="trivia_category">
+                    <option value="any">Any Category</option>
+                    <option value="9">General Knowledge</option>
+                    <option value="10">Entertainment: Books</option>
+                    <option value="11">Entertainment: Film</option>
+                    <option value="12">Entertainment: Music</option>
+                    <option value="13">Entertainment: Musicals & Theatres</option>
+                    <option value="14">Entertainment: Television</option>
+                    <option value="15">Entertainment: Video Games</option>
+                    <option value="16">Entertainment: Board Games</option>
+                    <option value="17">Science & Nature</option>
+                    <option value="18">Science: Computers</option>
+                    <option value="19">Science: Mathematics</option>
+                    <option value="20">Mythology</option>
+                    <option value="21">Sports</option>
+                    <option value="22">Geography</option>
+                    <option value="23">History</option>
+                    <option value="24">Politics</option>
+                    <option value="25">Art</option>
+                    <option value="26">Celebrities</option>
+                    <option value="27">Animals</option>
+                    <option value="28">Vehicles</option>
+                    <option value="29">Entertainment: Comics</option>
+                    <option value="30">Science: Gadgets</option>
+                    <option value="31">Entertainment: Japanese Anime & Manga</option>
+                    <option value="32">Entertainment: Cartoon & Animations</option>
+                </select><br>
+
+                <label for="trivia_difficulty">Select Difficulty:</label>
+                <select id="trivia_difficulty">
+                    <option value="any">Any Difficulty</option>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                </select><br>
+
+                <label for="trivia_type">Select Type:</label>
+                <select id="trivia_type">
+                    <option value="any">Any Type</option>
+                    <option value="multiple">Multiple Choice</option>
+                    <option value="boolean">True / False</option>
+                </select><br>
+
+                <button type="submit">Generate Questions</button>
+            </form>
+        </div>
     </div>
     <style>
         #setup {
@@ -184,7 +275,7 @@
         button {
             background-color: #28a745;
             color: #fff;
-            padding: 10px 20px;
+            padding: 5px 20px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -849,6 +940,52 @@ Name the Landmark?|The Louvre, Paris||https://www.celebritycruises.com/blog/cont
             stars = [];
             initStars();
         });
+    </script>
+
+    <script>
+        function openModal() {
+            document.getElementById('triviaModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('triviaModal').style.display = 'none';
+        }
+
+        function fetchTriviaQuestions(event) {
+            event.preventDefault();
+            
+            const amount = document.getElementById('trivia_amount').value;
+            const category = document.getElementById('trivia_category').value;
+            const difficulty = document.getElementById('trivia_difficulty').value;
+            const type = document.getElementById('trivia_type').value;
+            
+            let apiUrl = `https://opentdb.com/api.php?amount=${amount}`;
+            if (category !== 'any') apiUrl += `&category=${category}`;
+            if (difficulty !== 'any') apiUrl += `&difficulty=${difficulty}`;
+            if (type !== 'any') apiUrl += `&type=${type}`;
+            
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.response_code === 0) {
+                        let formattedQuestions = data.results.map(q => {
+                            let questionText = q.question;
+                            if (q.type === 'boolean') {
+                                questionText = 'True or False:<br>' + questionText;
+                            }
+                            return `${questionText}|${q.correct_answer}`;
+                        }).join('\n');
+                        document.getElementById('questionsInput').value += '\n' + formattedQuestions;
+                        closeModal();
+                    } else {
+                        alert('Error fetching trivia questions.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to fetch questions.');
+                });
+        }
     </script>
 </body>
 </html>
